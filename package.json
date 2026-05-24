@@ -1,0 +1,42 @@
+{
+  "name": "givemeword_bot",
+  "version": "1.0.0",
+  "description": "Feed Me Bible — Interactive Telegram scripture reading bot",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "seed": "ts-node src/scripts/seed.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/girum54/GiveMeWord_bot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/girum54/GiveMeWord_bot/issues"
+  },
+  "homepage": "https://github.com/girum54/GiveMeWord_bot#readme",
+  "dependencies": {
+    "bullmq": "^5.77.2",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "grammy": "^1.43.0",
+    "i18next": "^26.2.0",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "drizzle-kit": "^0.31.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}
