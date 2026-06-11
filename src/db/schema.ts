@@ -18,11 +18,13 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   telegramId: bigint("telegram_id", { mode: "bigint" }).unique().notNull(),
   username: varchar("username", { length: 255 }),
-  locale: varchar("locale", { length: 10 }).default("en").notNull(),
+  locale: varchar("locale", { length: 10 }).default("am").notNull(),
+  bibleVersion: varchar("bible_version", { length: 50 }).default("amharic").notNull(), // "amharic", "kjv", "amplified"
   commitmentLevel: integer("commitment_level").default(1).notNull(),
   isLeaderboardPublic: boolean("is_leaderboard_public").default(false).notNull(),
   targetDeliveryTime: time("target_delivery_time").default("07:00:00").notNull(),
   timezone: varchar("timezone", { length: 50 }).default("Africa/Addis_Ababa").notNull(),
+  lastDeliveryDate: date("last_delivery_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

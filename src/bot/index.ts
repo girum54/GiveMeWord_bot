@@ -6,7 +6,9 @@ import { registerReadCommand } from "./commands/read";
 import { registerHelpCommand } from "./commands/help";
 import { registerSettingsCommand } from "./commands/settings";
 import { registerStreakCommand } from "./commands/streak";
+import { registerTestCommand } from "./commands/test";
 import { registerCallbackHandlers } from "./callbacks";
+import { initializeScheduler } from "../services/scheduler";
 
 dotenv.config();
 
@@ -14,7 +16,7 @@ dotenv.config();
 
 export interface SessionData {
   /** Tracks where the user is in the onboarding flow */
-  onboardingStep?: "language" | "commitment" | "delivery_time" | "done";
+  onboardingStep?: "language" | "bible_version" | "commitment" | "delivery_time" | "done";
 }
 
 export type BotContext = Context & SessionFlavor<SessionData>;
@@ -46,9 +48,13 @@ export async function createBot(): Promise<Bot<BotContext>> {
   registerHelpCommand(bot);
   registerSettingsCommand(bot);
   registerStreakCommand(bot);
+  registerTestCommand(bot);
 
   // Register inline keyboard callback handlers
   registerCallbackHandlers(bot);
+
+  // Initialize background job scheduler
+  await initializeScheduler(bot);
 
   // Error handler
   bot.catch((err) => {

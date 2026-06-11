@@ -22,8 +22,49 @@ export function registerCallbackHandlers(bot: Bot<BotContext>) {
       parse_mode: "Markdown",
     });
 
-    // If in onboarding, proceed to commitment level
+    // If in onboarding, proceed to bible version selection
     if (ctx.session.onboardingStep === "language") {
+      const bibleKeyboard = new InlineKeyboard()
+        .text(t(locale, "btn_amharic"), "set_bible:amharic")
+        .row()
+        .text("KJV", "set_bible:kjv")
+        .text("Amplified", "set_bible:amplified");
+
+      await ctx.reply(t(locale, "choose_bible_version"), {
+        reply_markup: bibleKeyboard,
+        parse_mode: "Markdown",
+      });
+
+      ctx.session.onboardingStep = "bible_version";
+    }
+  });
+
+  // ─── Bible Version Selection ─────────────────────────────────────────────
+
+  bot.callbackQuery(/^set_bible:/, async (ctx) => {
+    const bibleVersion = ctx.callbackQuery.data.split(":")[1];
+    const telegramId = BigInt(ctx.from.id);
+
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.telegramId, telegramId))
+      .limit(1);
+
+    const locale = user.length > 0 ? user[0].locale : "am";
+
+    await db
+      .update(users)
+      .set({ bibleVersion, updatedAt: new Date() })
+      .where(eq(users.telegramId, telegramId));
+
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(t(locale, "bible_version_set"), {
+      parse_mode: "Markdown",
+    });
+
+    // If in onboarding, proceed to commitment level
+    if (ctx.session.onboardingStep === "bible_version") {
       const keyboard = new InlineKeyboard()
         .text("1", "set_commitment:1")
         .text("2", "set_commitment:2")
@@ -85,7 +126,7 @@ export function registerCallbackHandlers(bot: Bot<BotContext>) {
       .where(eq(users.telegramId, telegramId))
       .limit(1);
 
-    const locale = user.length > 0 ? user[0].locale : "en";
+    const locale = user.length > 0 ? user[0].locale : "am";
 
     const keyboard = new InlineKeyboard()
       .text(t(locale, "btn_english"), "set_lang:en")
@@ -93,6 +134,29 @@ export function registerCallbackHandlers(bot: Bot<BotContext>) {
 
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(t(locale, "choose_language"), {
+      reply_markup: keyboard,
+      parse_mode: "Markdown",
+    });
+  });
+
+  bot.callbackQuery("settings:bible", async (ctx) => {
+    const telegramId = BigInt(ctx.from.id);
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.telegramId, telegramId))
+      .limit(1);
+
+    const locale = user.length > 0 ? user[0].locale : "am";
+
+    const keyboard = new InlineKeyboard()
+      .text(t(locale, "btn_amharic"), "set_bible:amharic")
+      .row()
+      .text("KJV", "set_bible:kjv")
+      .text("Amplified", "set_bible:amplified");
+
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(t(locale, "choose_bible_version"), {
       reply_markup: keyboard,
       parse_mode: "Markdown",
     });
@@ -106,7 +170,7 @@ export function registerCallbackHandlers(bot: Bot<BotContext>) {
       .where(eq(users.telegramId, telegramId))
       .limit(1);
 
-    const locale = user.length > 0 ? user[0].locale : "en";
+    const locale = user.length > 0 ? user[0].locale : "am";
 
     const keyboard = new InlineKeyboard()
       .text("1", "set_commitment:1")
@@ -130,7 +194,7 @@ export function registerCallbackHandlers(bot: Bot<BotContext>) {
       .where(eq(users.telegramId, telegramId))
       .limit(1);
 
-    const locale = user.length > 0 ? user[0].locale : "en";
+    const locale = user.length > 0 ? user[0].locale : "am";
 
     await ctx.answerCallbackQuery();
     await ctx.reply(t(locale, "choose_delivery_time"), {

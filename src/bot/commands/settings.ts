@@ -22,17 +22,33 @@ export function registerSettingsCommand(bot: Bot<BotContext>) {
 
     const locale = user[0].locale;
     const languageName = locale === "am" ? "አማርኛ" : "English";
+    const bibleName =
+      user[0].bibleVersion === "amharic"
+        ? "አማርኛ (Amharic)"
+        : user[0].bibleVersion === "kjv"
+          ? "KJV"
+          : "Amplified";
+
+    // Convert 24-hour time to 12-hour format
+    const [hours, minutes] = user[0].targetDeliveryTime.split(":").slice(0, 2);
+    const hour24 = parseInt(hours);
+    const hour12 = hour24 % 12 || 12;
+    const ampm = hour24 >= 12 ? "PM" : "AM";
+    const time12 = `${hour12.toString().padStart(2, "0")}:${minutes} ${ampm}`;
 
     const text = t(locale, "settings_menu", {
       language: languageName,
+      bible: bibleName,
       level: user[0].commitmentLevel,
-      time: user[0].targetDeliveryTime,
+      time: time12,
       timezone: user[0].timezone,
     });
 
     const keyboard = new InlineKeyboard()
       .text("🌍 Language", "settings:language")
-      .text("📖 Level", "settings:level")
+      .text("📖 Bible", "settings:bible")
+      .row()
+      .text("📚 Level", "settings:level")
       .row()
       .text("⏰ Time", "settings:time")
       .text("🕐 Timezone", "settings:timezone");

@@ -16,13 +16,14 @@ export function registerStartCommand(bot: Bot<BotContext>) {
       .where(eq(users.telegramId, telegramId))
       .limit(1);
 
-    let locale = "en";
+    let locale = "am"; // Default to Amharic
 
     if (existingUser.length === 0) {
       // Create the user
       await db.insert(users).values({
         telegramId,
         username: ctx.from!.username ?? null,
+        locale: "am",
       });
 
       // Initialize streak record
