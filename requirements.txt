@@ -1,0 +1,193 @@
+================================================================================
+          FEED ME BIBLE (GIVEMEWORD BOT) - SYSTEM REQUIREMENTS SPECIFICATION
+================================================================================
+Document Version: 1.0.0
+Date: June 2, 2026
+Project Repository: girum54/GiveMeWord_bot
+Language Stack: TypeScript, Node.js, Drizzle ORM, GramMY Telegram Bot, PostgreSQL
+================================================================================
+
+1. PROJECT OVERVIEW
+------------------
+Feed Me Bible (GiveMeWord_bot) is an interactive, bilingual (English/Amharic) 
+Telegram bot designed to help users establish and maintain daily scripture reading 
+habits. The bot stands out by providing customizable commitment levels (multiple 
+concurrent reading tracks), a flexible progression structure (Chapter mode vs. 
+Thematic portion mode), social accountability agreements (Covenants), and rich gamification features (streaks, grace windows, badges).
+
+--------------------------------------------------------------------------------
+2. CURRENT TECHNICAL STACK & ARCHITECTURE
+--------------------------------------------------------------------------------
+- Platform: Telegram Bot API
+- Framework: GramMY (grammy) in TypeScript
+- Database: PostgreSQL managed via Drizzle ORM (drizzle-orm, drizzle-kit)
+- Queue/Background Tasks: BullMQ (installed in package.json, waiting config)
+- Internationalization: i18next with local JSON translations (English / Amharic)
+- Runtime: Node.js (ts-node for development, compiled JS in production)
+
+--------------------------------------------------------------------------------
+3. FUNCTIONAL REQUIREMENTS: CURRENTLY IMPLEMENTED (v1.0.0 FOUNDATION)
+--------------------------------------------------------------------------------
+3.1. User Core & Preferences Onboarding
+    - Registration of new users upon sending the `/start` command.
+    - Step-by-step interactive onboarding flow leveraging GramMY session state:
+        * Onboarding Step 1: Language selection (English or Amharic) via inline keyboard.
+        * Onboarding Step 2: Commitment level selection (1 to 5 tracks) via inline keyboard.
+        * Onboarding Step 3: Daily target delivery time (in HH:MM format).
+    - Initialization of user database record with:
+        * unique telegram_id, username, selected locale.
+        * timezone (defaults to "Africa/Addis_Ababa").
+        * commitment_level (defaults to 1).
+        * target_delivery_time (defaults to "07:00:00").
+    - Auto-assignment of the starter book (Psalms) to slot 1 upon onboarding completion.
+
+3.2. Database Seed & Corpus Core
+    - Support for 66 canonical books of the Bible.
+    - Seeding pipeline (`src/scripts/seed.ts`) that reads complete Bible texts:
+        * Amharic translation (from JSON).
+        * English KJV translation (from JSON).
+        * Thematic portion configurations (from JSON).
+    - Dual progression schemas:
+        * `book_chapters`: Holds full chapter text for English and Amharic.
+        * `thematic_portions`: Holds thematic segments mapped to sequence order, 
+          verse range descriptions, custom titles, and bilingual contents.
+
+3.3. Command Set
+    - `/start`: Initiates or resets the onboarding preference flow.
+    - `/read`: Queries active, uncompleted reading tracks for the user, formats the 
+      scripture text with beautiful bilingual headers and status footers, and delivers 
+      it. Telegram's 4096-character limit per message is handled by splitting content 
+      into multiple chunked messages at logical boundaries (newlines or spaces).
+    - `/settings`: Displays a personalized summary of the user's settings (language, 
+      commitment level, delivery time, timezone) with an inline menu to modify them.
+    - `/streak`: Fetches and displays the user's current reading streak, longest streak, 
+      and last engagement date.
+    - `/help`: Lists all valid commands and their functionalities.
+
+--------------------------------------------------------------------------------
+4. FUNCTIONAL REQUIREMENTS: PARTIALLY IMPLEMENTED / HIGH PRIORITY GAPS
+--------------------------------------------------------------------------------
+These requirements are partially reflected in the database schema or locale translations 
+but lack interactive bot handlers, triggers, or backend business logic.
+
+4.1. Interactive Reading Confirmation ("Mark as Read")
+    - Trigger: Inline buttons under `/read` messages ("✅ I've read this", "➡️ Next").
+    - Action:
+        * Mark the reading slot as completed for the current day.
+        * Advance user's progress: update `currentChapterNumber` (in Chapter mode) or 
+          `currentThematicSequence` (in Thematic mode) in the `user_active_tracks` table.
+        * If a book is completed, toggle `is_completed = true` and prompt the user to 
+          subscribe to a new book.
+        * Write telemetry logs to `user_interaction_logs` (tracking deliveredAt, openedAt, 
+          and duration).
+
+4.2. Gamification & Progression Engine
+    - Streak Calculation:
+        * Upon "Mark as Read", increment `currentStreak` in `user_streaks`.
+        * Check and update `longestStreak` if current streak exceeds it.
+        * Update `lastEngagementDate` to today's date.
+    - Grace Window System:
+        * Implement the `grace_window_used` column logic. If a user misses their daily 
+          reading by a short margin, allow a one-time monthly/weekly "grace save" to prevent 
+          the streak from resetting back to 0.
+    - Badges Engine:
+        * Create a background hook to check `levelRequirement` against streak counts, total chapters 
+          read, or books completed.
+        * Insert unlocked badges into the `user_badges` table.
+        * Notify the user with an enthusiastic bot alert containing the badge emoji (e.g. "🏆 Achievement Unlocked: Word Warrior!").
+
+4.3. Daily Reading Delivery Scheduler (BullMQ integration)
+    - Architecture: Set up Redis and a BullMQ worker process.
+    - Logic:
+        * Run a scheduled worker every minute or hour.
+        * Filter users whose `target_delivery_time` (adjusted to UTC based on their `timezone`) 
+          matches the current slot.
+        * Automatically query their uncompleted `user_active_tracks`, format the scriptures, 
+          and push the messages to their Telegram chat.
+        * Record the delivery event in `reminder_logs` (status = "sent") and initialize 
+          a `user_interaction_logs` row to track future reading telemetry.
+
+4.4. Social Accountability & Covenants (Groups)
+    - Groups / Covenants Commands:
+        * Add `/covenant` or `/groups` commands to create a reading covenant.
+        * Generate a unique 8-character `inviteCode` and store it in `covenants`.
+        * Allow other users to join the covenant using `/covenant join <invite_code>`.
+    - Covenant Commitments:
+        * Allow covenant creators to define shared reading goals (`covenant_commitments`): 
+          target book, target reading mode (thematic vs. chapter), total portions count, 
+          start date, and end date.
+    - Group Accountability Feed:
+        * When a group member marks their reading as done, broadcast a lightweight update 
+          to the group or display a mini-leaderboard of group progress to encourage members.
+
+--------------------------------------------------------------------------------
+5. FUTURE ADJUSTMENTS, roadmap & EXTENSIONS
+--------------------------------------------------------------------------------
+Planned long-term requirements to enhance user engagement, resource depth, and scalability.
+
+5.1. Multi-Translation Support
+    - Enable support for multiple translations per language:
+        * English: KJV (King James Version), ESV (English Standard Version), NIV (New International Version).
+        * Amharic: Standard 1954 translation, Haile Selassie 1980 translation, modern 1993 translation.
+    - Extend the `users` table to track preferred translations and query the database 
+      correspondingly.
+
+5.2. Media Enrichment & Resource Cards
+    - Integrate the `resources` table to associate multimedia with chapters or portions.
+    - For scriptures containing associated media (category: 'art', 'music', or 'video'), 
+      append a "🎨 Resources" inline button.
+    - Clicking the button delivers rich cards featuring historic Christian art, theological 
+      explainers, sacred choral music, or educational video links, complete with proper 
+      attributions.
+
+5.3. Smart Reminders & Nudges
+    - "Soft Ping" vs. "Hard Ping":
+        * If a user hasn't marked their daily reading as read 4 hours prior to their timezone's 
+          midnight, send a friendly "Soft Ping" reminder.
+        * If still unread 1 hour prior to midnight, send a "Hard Ping" warning that their streak 
+          is in danger.
+    - Interactive snooze options: allow users to click a "Remind me in 1 hour" button which schedules 
+      a dynamic BullMQ job.
+
+5.4. Public Leaderboards & Profiles
+    - Implement a global `/leaderboard` command showing the top users ordered by:
+        * Longest active streak.
+        * Total portions/chapters read.
+    - Respect user privacy: check `is_leaderboard_public` flag in the `users` table before 
+      displaying names/usernames.
+
+5.5. Admin Panel & Web Dashboard
+    - Build a responsive Web Portal (Next.js/Vite with a NestJS backend sharing the PostgreSQL database).
+    - Features for Group/Church Leaders:
+        * View aggregated statistics of Covenant members (without invading individual privacy).
+        * Create custom reading guides (thematic portions) and push them as shared tracks.
+        * Monitor overall system performance, database size, and bot delivery latency.
+
+5.6. Retention Features: Daily Scripture Quizzes
+    - Prompt users with an optional multiple-choice quiz question related to the chapter 
+      they just marked as read.
+    - Rewarding correct answers with small gamified boosts (e.g. customized points, bonus streak grace points).
+
+--------------------------------------------------------------------------------
+6. NON-FUNCTIONAL REQUIREMENTS
+--------------------------------------------------------------------------------
+6.1. Robust Session Management
+    - Migrate the current in-memory GramMY session storage (`session()`) to a persistent database 
+      storage adapter (e.g. `@grammyjs/storage-drizzle` using PostgreSQL, or Redis) so user 
+      onboarding sessions survive bot restarts.
+
+6.2. Telegram API Rate-Limit Resilience
+    - Telegram enforces strict limits (max 30 messages/second, max 20 messages/minute within 
+      a single group chat). The daily scheduler queue must utilize a rate-limiting throttle 
+      middleware in BullMQ to queue and drip-feed messages safely.
+
+6.3. Timezone Auto-Correction
+    - Instead of forcing users to manually input their timezone name, provide an option to 
+      share their approximate location to automatically identify and set the standard IANA 
+      timezone (e.g., `Africa/Addis_Ababa`).
+
+6.4. Text Localization Quality Control
+    - Maintain 100% translation parity between English and Amharic for all system alerts, 
+      error handlers, help texts, and button labels. Never display fallback code strings 
+      to the end-user.
+================================================================================
