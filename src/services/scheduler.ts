@@ -211,10 +211,11 @@ export async function deliverScripturesToUser(bot: Bot<BotContext>, user: typeof
     // Update last delivery date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD format
     
     await db
       .update(users)
-      .set({ lastDeliveryDate: today, updatedAt: new Date() })
+      .set({ lastDeliveryDate: dateString as any, updatedAt: new Date() })
       .where(eq(users.id, user.id));
 
     console.log(`✅ Delivery completed for user ${user.telegramId}`);

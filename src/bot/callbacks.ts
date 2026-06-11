@@ -237,36 +237,39 @@ export function registerCallbackHandlers(bot: Bot<BotContext>) {
         parse_mode: "Markdown",
       });
 
-      // Auto-assign Psalms to slot 1 as the starter book
+      // Create multiple tracks based on commitment level
       if (user.length > 0) {
-        const psalms = await db
+        const commitmentLevel = user[0].commitmentLevel;
+        
+        // Get first N books to assign to each slot
+        const booksToAssign = await db
           .select()
           .from(books)
-          .where(eq(books.keyName, "psalms"))
-          .limit(1);
+          .limit(commitmentLevel);
 
-        if (psalms.length > 0) {
-          // Check if user already has a track in slot 1
-          const existingTrack = await db
-            .select()
-            .from(userActiveTracks)
-            .where(
-              and(
-                eq(userActiveTracks.userId, user[0].id),
-                eq(userActiveTracks.slotNumber, 1)
+        if (booksToAssign.length > 0) {
+          for (let slot = 1; slot <= commitmentLevel; slot++) {
+            const existingTrack = await db
+              .select()
+              .from(userActiveTracks)
+              .where(
+                and(
+                  eq(userActiveTracks.userId, user[0].id),
+                  eq(userActiveTracks.slotNumber, slot)
+                )
               )
-            )
-            .limit(1);
+              .limit(1);
 
-          if (existingTrack.length === 0) {
-            await db.insert(userActiveTracks).values({
-              userId: user[0].id,
-              bookId: psalms[0].id,
-              slotNumber: 1,
-              readingMode: "chapter",
-              currentChapterNumber: 1,
-              currentThematicSequence: 1,
-            });
+            if (existingTrack.length === 0 && booksToAssign[slot - 1]) {
+              await db.insert(userActiveTracks).values({
+                userId: user[0].id,
+                bookId: booksToAssign[slot - 1].id,
+                slotNumber: slot,
+                readingMode: "chapter",
+                currentChapterNumber: 1,
+                currentThematicSequence: 1,
+              });
+            }
           }
         }
       }

@@ -7,6 +7,7 @@ import { registerHelpCommand } from "./commands/help";
 import { registerSettingsCommand } from "./commands/settings";
 import { registerStreakCommand } from "./commands/streak";
 import { registerTestCommand } from "./commands/test";
+import { registerNextCommand } from "./commands/next";
 import { registerCallbackHandlers } from "./callbacks";
 import { initializeScheduler } from "../services/scheduler";
 
@@ -49,6 +50,7 @@ export async function createBot(): Promise<Bot<BotContext>> {
   registerSettingsCommand(bot);
   registerStreakCommand(bot);
   registerTestCommand(bot);
+  registerNextCommand(bot);
 
   // Register inline keyboard callback handlers
   registerCallbackHandlers(bot);
